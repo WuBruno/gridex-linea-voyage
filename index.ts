@@ -219,21 +219,6 @@ type Order = {
   block: number;
 };
 
-function upsertOrder(order: Order) {
-  return prisma.order.upsert({
-    create: {
-      hash: order.hash,
-      address: order.address,
-      block: order.block,
-      type: order.orderType,
-    },
-    update: {},
-    where: {
-      hash: order.hash,
-    },
-  });
-}
-
 async function classifyMakerOrder(event: EventLog): Promise<Order> {
   const txn = await event.getTransaction();
   event.blockNumber;
@@ -324,6 +309,43 @@ enum TASK_IDS {
   SWAP = "294483983094947840",
   MAKER = "294486182093037568",
   ADVANCED = "294488445817626624",
+}
+
+async function updateTaskReplace(credId: TASK_IDS, addresses: String[]) {
+  const operation = "REPLACE";
+
+  const res = await axios.post(
+    "https://graphigo.prd.galaxy.eco/query",
+    {
+      operationName: "credentialItems",
+      query: `
+      mutation credentialItems($credId: ID!, $operation: Operation!, $items: [String!]!) 
+        { 
+          credentialItems(input: { 
+            credId: $credId 
+            operation: $operation 
+            items: $items 
+          }) 
+          { 
+            name 
+          } 
+        }
+      `,
+      variables: {
+        // Make sure this is string type as int might cause overflow
+        credId: credId.toString(),
+        operation: operation,
+        items: addresses,
+      },
+    },
+    {
+      headers: {
+        "access-token": process.env.GALXE_ACCESS_TOKEN,
+      },
+    }
+  );
+  console.log(res.status);
+  return res;
 }
 
 async function updateTasks(credId: TASK_IDS, addresses: String[]) {
@@ -557,7 +579,6 @@ async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
   console.log("Swap Addresses Complete", addresses.size);
 }
 
-const INFURA_PROVIDER = `https://linea-goerli.infura.io/v3/${process.env.API_KEY}`;
 const PUBLIC_PROVIDER = "https://rpc.goerli.linea.build";
 
 async function main() {
@@ -584,6 +605,21 @@ async function main() {
   // await updateAllMakerOrders(provider);
   // console.log("ALL SWAP ---------");
   // await updateAllSwapOrders(provider);
+}
+
+async function correctAdvancedOrders(provider: JsonRpcApiProvider) {
+  const currentBlock = await provider.getBlockNumber();
+  const batch = await getUniqueAddressOrderTypeWithBlockCumulative(
+    OrderType.Batch,
+    currentBlock
+  );
+  const relative = await getUniqueAddressOrderTypeWithBlockCumulative(
+    OrderType.Relative,
+    currentBlock
+  );
+  const both = [...batch].filter((x) => relative.has(x));
+
+  await updateTaskReplace(TASK_IDS.ADVANCED, Array.from(both));
 }
 
 main()
