@@ -35,6 +35,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.PUBLIC_PROVIDER = exports.updateAllSwapOrders = exports.updateAllMakerOrders = exports.updateAllAdvancedOrders = exports.updateSwapOrders = exports.updateMakerOrders = exports.processMakerOrders = exports.getHistoricalOrderStats = exports.processSwapEvents = exports.updateTasks = exports.updateTaskReplace = exports.TASK_IDS = exports.getMakerOrders = exports.classifyMakerOrder = exports.OrderType = exports.MAKER_ORDER_HASH = exports.BATCH_ORDER_HASH = exports.RELATIVE_ORDER_HASH = exports.adjustableQueryFilter = exports.getMakerOrderEvents = exports.getSwapEvents = exports.getUniqueOrderAddresses = exports.getUniqueEventAddresses = exports.getClosestBlock = exports.getMostRecentBlockMaker = exports.getMostRecentBlockSwap = exports.getUniqueAddressOrderTypeWithBlockInterval = exports.getUniqueAddressOrderTypeWithBlockCumulative = exports.getUniqueAddressOrderType = void 0;
 const ethers_1 = require("ethers");
 const Grid = __importStar(require("./abi/Grid.json"));
 const axios_1 = __importDefault(require("axios"));
@@ -57,6 +58,7 @@ function getUniqueAddressOrderType(orderType) {
         return new Set(addresses.map((address) => address.address));
     });
 }
+exports.getUniqueAddressOrderType = getUniqueAddressOrderType;
 function getUniqueAddressOrderTypeWithBlockCumulative(orderType, endBlock) {
     return __awaiter(this, void 0, void 0, function* () {
         const addresses = yield prisma.order.findMany({
@@ -73,6 +75,7 @@ function getUniqueAddressOrderTypeWithBlockCumulative(orderType, endBlock) {
         return new Set(addresses.map((address) => address.address));
     });
 }
+exports.getUniqueAddressOrderTypeWithBlockCumulative = getUniqueAddressOrderTypeWithBlockCumulative;
 function getUniqueAddressOrderTypeWithBlockInterval(orderType, startBlock, endBlock) {
     return __awaiter(this, void 0, void 0, function* () {
         const addresses = yield prisma.order.findMany({
@@ -90,6 +93,7 @@ function getUniqueAddressOrderTypeWithBlockInterval(orderType, startBlock, endBl
         return new Set(addresses.map((address) => address.address));
     });
 }
+exports.getUniqueAddressOrderTypeWithBlockInterval = getUniqueAddressOrderTypeWithBlockInterval;
 function getMostRecentBlockSwap() {
     return prisma.order
         .findFirst({
@@ -102,6 +106,7 @@ function getMostRecentBlockSwap() {
     })
         .then((order) => order.block);
 }
+exports.getMostRecentBlockSwap = getMostRecentBlockSwap;
 function getMostRecentBlockMaker() {
     return prisma.order
         .findFirst({
@@ -116,6 +121,7 @@ function getMostRecentBlockMaker() {
     })
         .then((order) => order.block);
 }
+exports.getMostRecentBlockMaker = getMostRecentBlockMaker;
 function getClosestBlock(date, provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const timestamp = new Date(date).getTime() / 1000;
@@ -145,12 +151,15 @@ function getClosestBlock(date, provider) {
         return closestBlockNumber;
     });
 }
+exports.getClosestBlock = getClosestBlock;
 function getUniqueEventAddresses(events) {
     return new Set(events.map((event) => event.args[1]));
 }
+exports.getUniqueEventAddresses = getUniqueEventAddresses;
 function getUniqueOrderAddresses(events) {
     return new Set(events.map((event) => event.address));
 }
+exports.getUniqueOrderAddresses = getUniqueOrderAddresses;
 function getSwapEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const gridContract = new ethers_1.ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
@@ -160,6 +169,7 @@ function getSwapEvents(provider, blockStart, blockEnd) {
         return [...events, ...events2];
     });
 }
+exports.getSwapEvents = getSwapEvents;
 function getMakerOrderEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const gridContract = new ethers_1.ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
@@ -170,6 +180,7 @@ function getMakerOrderEvents(provider, blockStart, blockEnd) {
         ];
     });
 }
+exports.getMakerOrderEvents = getMakerOrderEvents;
 function adjustableQueryFilter(contract, filter, blockStart, blockEnd) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -191,9 +202,10 @@ function adjustableQueryFilter(contract, filter, blockStart, blockEnd) {
         }
     });
 }
-const RELATIVE_ORDER_HASH = "0xc23e3b38";
-const BATCH_ORDER_HASH = "0xa6fcb341";
-const MAKER_ORDER_HASH = "0x42d95cc7";
+exports.adjustableQueryFilter = adjustableQueryFilter;
+exports.RELATIVE_ORDER_HASH = "0xc23e3b38";
+exports.BATCH_ORDER_HASH = "0xa6fcb341";
+exports.MAKER_ORDER_HASH = "0x42d95cc7";
 var OrderType;
 (function (OrderType) {
     OrderType["Maker"] = "Maker";
@@ -201,33 +213,19 @@ var OrderType;
     OrderType["Relative"] = "Relative";
     OrderType["Unknown"] = "Unknown";
     OrderType["Swap"] = "Swap";
-})(OrderType || (OrderType = {}));
-function upsertOrder(order) {
-    return prisma.order.upsert({
-        create: {
-            hash: order.hash,
-            address: order.address,
-            block: order.block,
-            type: order.orderType,
-        },
-        update: {},
-        where: {
-            hash: order.hash,
-        },
-    });
-}
+})(OrderType || (exports.OrderType = OrderType = {}));
 function classifyMakerOrder(event) {
     return __awaiter(this, void 0, void 0, function* () {
         const txn = yield event.getTransaction();
         event.blockNumber;
         let orderType = OrderType.Unknown;
-        if (txn.data.startsWith(MAKER_ORDER_HASH)) {
+        if (txn.data.startsWith(exports.MAKER_ORDER_HASH)) {
             orderType = OrderType.Maker;
         }
-        else if (txn.data.startsWith(BATCH_ORDER_HASH)) {
+        else if (txn.data.startsWith(exports.BATCH_ORDER_HASH)) {
             orderType = OrderType.Batch;
         }
-        else if (txn.data.startsWith(RELATIVE_ORDER_HASH)) {
+        else if (txn.data.startsWith(exports.RELATIVE_ORDER_HASH)) {
             orderType = OrderType.Relative;
         }
         return {
@@ -238,6 +236,7 @@ function classifyMakerOrder(event) {
         };
     });
 }
+exports.classifyMakerOrder = classifyMakerOrder;
 function getMakerOrders(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const makerOrderEvents = yield getMakerOrderEvents(provider, blockStart, blockEnd);
@@ -270,12 +269,47 @@ function getMakerOrders(provider, blockStart, blockEnd) {
         };
     });
 }
+exports.getMakerOrders = getMakerOrders;
 var TASK_IDS;
 (function (TASK_IDS) {
     TASK_IDS["SWAP"] = "294483983094947840";
     TASK_IDS["MAKER"] = "294486182093037568";
     TASK_IDS["ADVANCED"] = "294488445817626624";
-})(TASK_IDS || (TASK_IDS = {}));
+})(TASK_IDS || (exports.TASK_IDS = TASK_IDS = {}));
+function updateTaskReplace(credId, addresses) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const operation = "REPLACE";
+        const res = yield axios_1.default.post("https://graphigo.prd.galaxy.eco/query", {
+            operationName: "credentialItems",
+            query: `
+      mutation credentialItems($credId: ID!, $operation: Operation!, $items: [String!]!) 
+        { 
+          credentialItems(input: { 
+            credId: $credId 
+            operation: $operation 
+            items: $items 
+          }) 
+          { 
+            name 
+          } 
+        }
+      `,
+            variables: {
+                // Make sure this is string type as int might cause overflow
+                credId: credId.toString(),
+                operation: operation,
+                items: addresses,
+            },
+        }, {
+            headers: {
+                "access-token": process.env.GALXE_ACCESS_TOKEN,
+            },
+        });
+        console.log(res.status);
+        return res;
+    });
+}
+exports.updateTaskReplace = updateTaskReplace;
 function updateTasks(credId, addresses) {
     return __awaiter(this, void 0, void 0, function* () {
         const operation = "APPEND";
@@ -309,6 +343,7 @@ function updateTasks(credId, addresses) {
         return res;
     });
 }
+exports.updateTasks = updateTasks;
 function processSwapEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const swapEvents = yield getSwapEvents(provider, blockStart, blockEnd);
@@ -332,6 +367,7 @@ function processSwapEvents(provider, blockStart, blockEnd) {
         console.log("Swap Addresses Complete", getUniqueEventAddresses(swapEvents).size);
     });
 }
+exports.processSwapEvents = processSwapEvents;
 function getHistoricalOrderStats(blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentSwapAddresses = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Swap, blockStart, blockEnd);
@@ -352,6 +388,7 @@ function getHistoricalOrderStats(blockStart, blockEnd) {
         console.log("New Relative Addresses", newRelativeAddresses.length);
     });
 }
+exports.getHistoricalOrderStats = getHistoricalOrderStats;
 function processMakerOrders(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const { makerOrders, batchOrders, relativeOrders } = yield getMakerOrders(provider, blockStart, blockEnd);
@@ -379,6 +416,7 @@ function processMakerOrders(provider, blockStart, blockEnd) {
         console.log("Advanced Order Addresses Complete", newComplete.size);
     });
 }
+exports.processMakerOrders = processMakerOrders;
 function updateMakerOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
@@ -386,6 +424,7 @@ function updateMakerOrders(provider) {
         yield processMakerOrders(provider, mostRecentBlock, currentBlock);
     });
 }
+exports.updateMakerOrders = updateMakerOrders;
 function updateSwapOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
@@ -393,6 +432,7 @@ function updateSwapOrders(provider) {
         yield processSwapEvents(provider, mostRecentBlock, currentBlock);
     });
 }
+exports.updateSwapOrders = updateSwapOrders;
 function updateAllAdvancedOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
@@ -403,6 +443,7 @@ function updateAllAdvancedOrders(provider) {
         console.log("Advanced Order Addresses Complete", both.length);
     });
 }
+exports.updateAllAdvancedOrders = updateAllAdvancedOrders;
 function updateAllMakerOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
@@ -411,6 +452,7 @@ function updateAllMakerOrders(provider) {
         console.log("Maker Addresses Complete", addresses.size);
     });
 }
+exports.updateAllMakerOrders = updateAllMakerOrders;
 function updateAllSwapOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
@@ -419,11 +461,11 @@ function updateAllSwapOrders(provider) {
         console.log("Swap Addresses Complete", addresses.size);
     });
 }
-const INFURA_PROVIDER = `https://linea-goerli.infura.io/v3/${process.env.API_KEY}`;
-const PUBLIC_PROVIDER = "https://rpc.goerli.linea.build";
+exports.updateAllSwapOrders = updateAllSwapOrders;
+exports.PUBLIC_PROVIDER = "https://rpc.goerli.linea.build";
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        const provider = new ethers_1.ethers.JsonRpcProvider(PUBLIC_PROVIDER, 59140);
+        const provider = new ethers_1.ethers.JsonRpcProvider(exports.PUBLIC_PROVIDER, 59140);
         const currentBlock = yield provider.getBlockNumber();
         const DATE_BLOCKS = {
             26: 997063,
@@ -444,13 +486,22 @@ function main() {
         yield updateAllSwapOrders(provider);
     });
 }
-main()
-    .then(() => __awaiter(void 0, void 0, void 0, function* () {
-    yield prisma.$disconnect();
-}))
-    .catch((e) => __awaiter(void 0, void 0, void 0, function* () {
-    console.error(e);
-    yield prisma.$disconnect();
-    process.exit(1);
-}));
+function correctAdvancedOrders(provider) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const currentBlock = yield provider.getBlockNumber();
+        const batch = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Batch, currentBlock);
+        const relative = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Relative, currentBlock);
+        const both = [...batch].filter((x) => relative.has(x));
+        yield updateTaskReplace(TASK_IDS.ADVANCED, Array.from(both));
+    });
+}
+// main()
+//   .then(async () => {
+//     await prisma.$disconnect();
+//   })
+//   .catch(async (e) => {
+//     console.error(e);
+//     await prisma.$disconnect();
+//     process.exit(1);
+//   });
 //# sourceMappingURL=index.js.map

@@ -1,6 +1,9 @@
 {
   "scripts": {
-    "start": "tsc && node dist/index.js"
+    "start": "tsc && node dist/index.js",
+    "galxe": "tsc && node dist/updateGalxe.js",
+    "sync": "tsc && node dist/sync.js",
+    "db": "npx prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^4.16.1",

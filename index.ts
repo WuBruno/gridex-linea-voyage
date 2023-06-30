@@ -10,7 +10,7 @@ const GRID_ADDRESS = "0xCF3D9B1793F6714C2c5ec68c7641d13F514eEd55";
 const GRID2_ADDRESS = "0x5984FE9Fb63be89B11D701E64016C77108a3a2C8";
 const MAKER_ORDER_MANAGER = "0x36E56CC52d7A0Af506D1656765510cd930fF1595";
 
-async function getUniqueAddressOrderType(orderType: OrderType) {
+export async function getUniqueAddressOrderType(orderType: OrderType) {
   const addresses = await prisma.order.findMany({
     select: {
       address: true,
@@ -22,7 +22,7 @@ async function getUniqueAddressOrderType(orderType: OrderType) {
   return new Set(addresses.map((address) => address.address));
 }
 
-async function getUniqueAddressOrderTypeWithBlockCumulative(
+export async function getUniqueAddressOrderTypeWithBlockCumulative(
   orderType: OrderType,
   endBlock: number
 ) {
@@ -40,7 +40,7 @@ async function getUniqueAddressOrderTypeWithBlockCumulative(
   return new Set(addresses.map((address) => address.address));
 }
 
-async function getUniqueAddressOrderTypeWithBlockInterval(
+export async function getUniqueAddressOrderTypeWithBlockInterval(
   orderType: OrderType,
   startBlock: number,
   endBlock: number
@@ -60,7 +60,7 @@ async function getUniqueAddressOrderTypeWithBlockInterval(
   return new Set(addresses.map((address) => address.address));
 }
 
-function getMostRecentBlockSwap() {
+export function getMostRecentBlockSwap() {
   return prisma.order
     .findFirst({
       orderBy: {
@@ -73,7 +73,7 @@ function getMostRecentBlockSwap() {
     .then((order) => order.block);
 }
 
-function getMostRecentBlockMaker() {
+export function getMostRecentBlockMaker() {
   return prisma.order
     .findFirst({
       orderBy: {
@@ -88,7 +88,10 @@ function getMostRecentBlockMaker() {
     .then((order) => order.block);
 }
 
-async function getClosestBlock(date: string, provider: ethers.JsonRpcProvider) {
+export async function getClosestBlock(
+  date: string,
+  provider: ethers.JsonRpcProvider
+) {
   const timestamp = new Date(date).getTime() / 1000;
   let minBlockNumber = 0;
   let maxBlockNumber = await provider.getBlockNumber();
@@ -118,15 +121,15 @@ async function getClosestBlock(date: string, provider: ethers.JsonRpcProvider) {
   return closestBlockNumber;
 }
 
-function getUniqueEventAddresses(events: EventLog[]) {
+export function getUniqueEventAddresses(events: EventLog[]) {
   return new Set(events.map((event) => event.args[1]));
 }
 
-function getUniqueOrderAddresses(events: Order[]) {
+export function getUniqueOrderAddresses(events: Order[]) {
   return new Set(events.map((event) => event.address));
 }
 
-async function getSwapEvents(
+export async function getSwapEvents(
   provider: JsonRpcApiProvider,
   blockStart?: number,
   blockEnd?: number
@@ -149,7 +152,7 @@ async function getSwapEvents(
   return [...events, ...events2];
 }
 
-async function getMakerOrderEvents(
+export async function getMakerOrderEvents(
   provider: JsonRpcApiProvider,
   blockStart: number,
   blockEnd: number
@@ -173,7 +176,7 @@ async function getMakerOrderEvents(
   ];
 }
 
-async function adjustableQueryFilter(
+export async function adjustableQueryFilter(
   contract: ethers.Contract,
   filter: ethers.DeferredTopicFilter,
   blockStart: number,
@@ -200,11 +203,11 @@ async function adjustableQueryFilter(
   }
 }
 
-const RELATIVE_ORDER_HASH = "0xc23e3b38";
-const BATCH_ORDER_HASH = "0xa6fcb341";
-const MAKER_ORDER_HASH = "0x42d95cc7";
+export const RELATIVE_ORDER_HASH = "0xc23e3b38";
+export const BATCH_ORDER_HASH = "0xa6fcb341";
+export const MAKER_ORDER_HASH = "0x42d95cc7";
 
-enum OrderType {
+export enum OrderType {
   Maker = "Maker",
   Batch = "Batch",
   Relative = "Relative",
@@ -212,14 +215,14 @@ enum OrderType {
   Swap = "Swap",
 }
 
-type Order = {
+export type Order = {
   address: string;
   orderType: OrderType;
   hash: string;
   block: number;
 };
 
-async function classifyMakerOrder(event: EventLog): Promise<Order> {
+export async function classifyMakerOrder(event: EventLog): Promise<Order> {
   const txn = await event.getTransaction();
   event.blockNumber;
 
@@ -240,7 +243,7 @@ async function classifyMakerOrder(event: EventLog): Promise<Order> {
   };
 }
 
-async function getMakerOrders(
+export async function getMakerOrders(
   provider: JsonRpcApiProvider,
   blockStart: number,
   blockEnd: number
@@ -305,13 +308,13 @@ async function getMakerOrders(
   };
 }
 
-enum TASK_IDS {
+export enum TASK_IDS {
   SWAP = "294483983094947840",
   MAKER = "294486182093037568",
   ADVANCED = "294488445817626624",
 }
 
-async function updateTaskReplace(credId: TASK_IDS, addresses: String[]) {
+export async function updateTaskReplace(credId: TASK_IDS, addresses: String[]) {
   const operation = "REPLACE";
 
   const res = await axios.post(
@@ -348,7 +351,7 @@ async function updateTaskReplace(credId: TASK_IDS, addresses: String[]) {
   return res;
 }
 
-async function updateTasks(credId: TASK_IDS, addresses: String[]) {
+export async function updateTasks(credId: TASK_IDS, addresses: String[]) {
   const operation = "APPEND";
 
   const res = await axios.post(
@@ -385,7 +388,7 @@ async function updateTasks(credId: TASK_IDS, addresses: String[]) {
   return res;
 }
 
-async function processSwapEvents(
+export async function processSwapEvents(
   provider: JsonRpcApiProvider,
   blockStart: number,
   blockEnd: number
@@ -422,7 +425,10 @@ async function processSwapEvents(
   );
 }
 
-async function getHistoricalOrderStats(blockStart: number, blockEnd: number) {
+export async function getHistoricalOrderStats(
+  blockStart: number,
+  blockEnd: number
+) {
   const currentSwapAddresses = await getUniqueAddressOrderTypeWithBlockInterval(
     OrderType.Swap,
     blockStart,
@@ -484,7 +490,7 @@ async function getHistoricalOrderStats(blockStart: number, blockEnd: number) {
   console.log("New Relative Addresses", newRelativeAddresses.length);
 }
 
-async function processMakerOrders(
+export async function processMakerOrders(
   provider: JsonRpcApiProvider,
   blockStart: number,
   blockEnd: number
@@ -532,19 +538,19 @@ async function processMakerOrders(
   console.log("Advanced Order Addresses Complete", newComplete.size);
 }
 
-async function updateMakerOrders(provider: JsonRpcApiProvider) {
+export async function updateMakerOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const mostRecentBlock = (await getMostRecentBlockMaker()) + 1;
   await processMakerOrders(provider, mostRecentBlock, currentBlock);
 }
 
-async function updateSwapOrders(provider: JsonRpcApiProvider) {
+export async function updateSwapOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const mostRecentBlock = (await getMostRecentBlockSwap()) + 1;
   await processSwapEvents(provider, mostRecentBlock, currentBlock);
 }
 
-async function updateAllAdvancedOrders(provider: JsonRpcApiProvider) {
+export async function updateAllAdvancedOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const batch = await getUniqueAddressOrderTypeWithBlockCumulative(
     OrderType.Batch,
@@ -559,7 +565,7 @@ async function updateAllAdvancedOrders(provider: JsonRpcApiProvider) {
   console.log("Advanced Order Addresses Complete", both.length);
 }
 
-async function updateAllMakerOrders(provider: JsonRpcApiProvider) {
+export async function updateAllMakerOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
     OrderType.Maker,
@@ -569,7 +575,7 @@ async function updateAllMakerOrders(provider: JsonRpcApiProvider) {
   console.log("Maker Addresses Complete", addresses.size);
 }
 
-async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
+export async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
     OrderType.Maker,
@@ -579,7 +585,7 @@ async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
   console.log("Swap Addresses Complete", addresses.size);
 }
 
-const PUBLIC_PROVIDER = "https://rpc.goerli.linea.build";
+export const PUBLIC_PROVIDER = "https://rpc.goerli.linea.build";
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(PUBLIC_PROVIDER, 59140);
@@ -594,17 +600,17 @@ async function main() {
   };
   const EVENT_START_BLOCK = DATE_BLOCKS[26];
 
-  console.log("SWAP ---------");
-  await updateSwapOrders(provider);
-  console.log("MAKERS ---------");
-  await updateMakerOrders(provider);
+  // console.log("SWAP ---------");
+  // await updateSwapOrders(provider);
+  // console.log("MAKERS ---------");
+  // await updateMakerOrders(provider);
 
-  // console.log("ALL ADVANCED ---------");
-  // await updateAllAdvancedOrders(provider);
-  // console.log("ALL MAKER ---------");
-  // await updateAllMakerOrders(provider);
-  // console.log("ALL SWAP ---------");
-  // await updateAllSwapOrders(provider);
+  console.log("ALL ADVANCED ---------");
+  await updateAllAdvancedOrders(provider);
+  console.log("ALL MAKER ---------");
+  await updateAllMakerOrders(provider);
+  console.log("ALL SWAP ---------");
+  await updateAllSwapOrders(provider);
 }
 
 async function correctAdvancedOrders(provider: JsonRpcApiProvider) {
@@ -622,12 +628,12 @@ async function correctAdvancedOrders(provider: JsonRpcApiProvider) {
   await updateTaskReplace(TASK_IDS.ADVANCED, Array.from(both));
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+// main()
+//   .then(async () => {
+//     await prisma.$disconnect();
+//   })
+//   .catch(async (e) => {
+//     console.error(e);
+//     await prisma.$disconnect();
+//     process.exit(1);
+//   });
