@@ -456,7 +456,7 @@ exports.updateAllMakerOrders = updateAllMakerOrders;
 function updateAllSwapOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Maker, currentBlock);
+        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Swap, currentBlock);
         yield updateTasks(TASK_IDS.SWAP, [...addresses]);
         console.log("Swap Addresses Complete", addresses.size);
     });
@@ -489,10 +489,8 @@ function main() {
 function correctAdvancedOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const batch = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Batch, currentBlock);
-        const relative = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Relative, currentBlock);
-        const both = [...batch].filter((x) => relative.has(x));
-        yield updateTaskReplace(TASK_IDS.ADVANCED, Array.from(both));
+        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Swap, currentBlock);
+        yield updateTaskReplace(TASK_IDS.SWAP, Array.from(addresses));
     });
 }
 // main()

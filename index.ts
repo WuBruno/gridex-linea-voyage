@@ -578,7 +578,7 @@ export async function updateAllMakerOrders(provider: JsonRpcApiProvider) {
 export async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
   const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
-    OrderType.Maker,
+    OrderType.Swap,
     currentBlock
   );
   await updateTasks(TASK_IDS.SWAP, [...addresses]);
@@ -615,17 +615,12 @@ async function main() {
 
 async function correctAdvancedOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
-  const batch = await getUniqueAddressOrderTypeWithBlockCumulative(
-    OrderType.Batch,
+  const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
+    OrderType.Swap,
     currentBlock
   );
-  const relative = await getUniqueAddressOrderTypeWithBlockCumulative(
-    OrderType.Relative,
-    currentBlock
-  );
-  const both = [...batch].filter((x) => relative.has(x));
 
-  await updateTaskReplace(TASK_IDS.ADVANCED, Array.from(both));
+  await updateTaskReplace(TASK_IDS.SWAP, Array.from(addresses));
 }
 
 // main()

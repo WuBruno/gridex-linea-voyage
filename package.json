@@ -3,7 +3,8 @@
     "start": "tsc && node dist/index.js",
     "galxe": "tsc && node dist/updateGalxe.js",
     "sync": "tsc && node dist/sync.js",
-    "db": "npx prisma studio"
+    "db": "npx prisma studio",
+    "correct": "tsc && node dist/correct.js"
   },
   "dependencies": {
     "@prisma/client": "^4.16.1",
