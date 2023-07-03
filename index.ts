@@ -6,8 +6,14 @@ require("dotenv").config();
 
 const prisma = new PrismaClient();
 
+export const RELATIVE_ORDER_HASH = "0xc23e3b38";
+export const BATCH_ORDER_HASH = "0xa6fcb341";
+export const MAKER_ORDER_HASH = "0x42d95cc7";
+
 const GRID_ADDRESS = "0xCF3D9B1793F6714C2c5ec68c7641d13F514eEd55";
 const GRID2_ADDRESS = "0x5984FE9Fb63be89B11D701E64016C77108a3a2C8";
+const GRID3_ADDRESS = "0xb15A3031746E265a6eAB58E55286A7E408c050e9";
+
 const MAKER_ORDER_MANAGER = "0x36E56CC52d7A0Af506D1656765510cd930fF1595";
 
 export async function getUniqueAddressOrderType(orderType: OrderType) {
@@ -121,10 +127,6 @@ export async function getClosestBlock(
   return closestBlockNumber;
 }
 
-export function getUniqueEventAddresses(events: EventLog[]) {
-  return new Set(events.map((event) => event.args[1]));
-}
-
 export function getUniqueOrderAddresses(events: Order[]) {
   return new Set(events.map((event) => event.address));
 }
@@ -133,9 +135,10 @@ export async function getSwapEvents(
   provider: JsonRpcApiProvider,
   blockStart?: number,
   blockEnd?: number
-) {
+): Promise<Order[]> {
   const gridContract = new ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
   const gridContract2 = new ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
+  const gridContract3 = new ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
 
   const events = await adjustableQueryFilter(
     gridContract,
@@ -149,7 +152,23 @@ export async function getSwapEvents(
     blockStart,
     blockEnd
   );
-  return [...events, ...events2];
+  const events3 = await adjustableQueryFilter(
+    gridContract3,
+    gridContract3.filters.Swap(),
+    blockStart,
+    blockEnd
+  );
+  return Promise.all(
+    [...events, ...events2, ...events3].map(async (event): Promise<Order> => {
+      const txn = await event.getTransaction();
+      return {
+        hash: txn.hash,
+        address: txn.from,
+        block: txn.blockNumber,
+        orderType: OrderType.Swap,
+      };
+    })
+  );
 }
 
 export async function getMakerOrderEvents(
@@ -203,10 +222,6 @@ export async function adjustableQueryFilter(
   }
 }
 
-export const RELATIVE_ORDER_HASH = "0xc23e3b38";
-export const BATCH_ORDER_HASH = "0xa6fcb341";
-export const MAKER_ORDER_HASH = "0x42d95cc7";
-
 export enum OrderType {
   Maker = "Maker",
   Batch = "Batch",
@@ -224,7 +239,6 @@ export type Order = {
 
 export async function classifyMakerOrder(event: EventLog): Promise<Order> {
   const txn = await event.getTransaction();
-  event.blockNumber;
 
   let orderType = OrderType.Unknown;
   if (txn.data.startsWith(MAKER_ORDER_HASH)) {
@@ -395,7 +409,7 @@ export async function processSwapEvents(
 ) {
   const swapEvents = await getSwapEvents(provider, blockStart, blockEnd);
   const swapAddresses = await getUniqueAddressOrderType(OrderType.Swap);
-  const newAddresses = Array.from(getUniqueEventAddresses(swapEvents)).filter(
+  const newAddresses = Array.from(getUniqueOrderAddresses(swapEvents)).filter(
     (address) => !swapAddresses.has(address)
   );
 
@@ -407,21 +421,23 @@ export async function processSwapEvents(
     swapEvents.map((swap) =>
       prisma.order.upsert({
         create: {
-          hash: swap.transactionHash,
-          address: swap.args[1],
-          block: swap.blockNumber,
+          hash: swap.hash,
+          address: swap.address,
+          block: swap.block,
           type: OrderType.Swap,
         },
-        update: {},
+        update: {
+          address: swap.address,
+        },
         where: {
-          hash: swap.transactionHash,
+          hash: swap.hash,
         },
       })
     )
   );
   console.log(
     "Swap Addresses Complete",
-    getUniqueEventAddresses(swapEvents).size
+    getUniqueOrderAddresses(swapEvents).size
   );
 }
 
@@ -599,24 +615,15 @@ async function main() {
     29: 1018263,
   };
   const EVENT_START_BLOCK = DATE_BLOCKS[26];
-
-  // console.log("SWAP ---------");
-  // await updateSwapOrders(provider);
-  // console.log("MAKERS ---------");
-  // await updateMakerOrders(provider);
-
-  console.log("ALL ADVANCED ---------");
-  await updateAllAdvancedOrders(provider);
-  console.log("ALL MAKER ---------");
-  await updateAllMakerOrders(provider);
-  console.log("ALL SWAP ---------");
-  await updateAllSwapOrders(provider);
 }
 
-async function correctAdvancedOrders(provider: JsonRpcApiProvider) {
+async function correctOrders(
+  provider: JsonRpcApiProvider,
+  orderType: OrderType
+) {
   const currentBlock = await provider.getBlockNumber();
   const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
-    OrderType.Swap,
+    orderType,
     currentBlock
   );
 

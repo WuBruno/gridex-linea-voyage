@@ -7,11 +7,20 @@ import {
   getMostRecentBlockSwap,
   getSwapEvents,
   getUniqueAddressOrderType,
-  getUniqueEventAddresses,
+  getUniqueOrderAddresses,
 } from ".";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+const DATE_BLOCKS = {
+  26: 997063,
+  27: 1003898,
+  28: 1011066,
+  29: 1018263,
+};
+
+const EVENT_START_BLOCK = DATE_BLOCKS[26];
 
 async function syncSwapEvents(provider: JsonRpcProvider) {
   const currentBlock = await provider.getBlockNumber();
@@ -22,7 +31,7 @@ async function syncSwapEvents(provider: JsonRpcProvider) {
     currentBlock
   );
   const swapAddresses = await getUniqueAddressOrderType(OrderType.Swap);
-  const newAddresses = Array.from(getUniqueEventAddresses(swapEvents)).filter(
+  const newAddresses = Array.from(getUniqueOrderAddresses(swapEvents)).filter(
     (address) => !swapAddresses.has(address)
   );
 
@@ -33,21 +42,19 @@ async function syncSwapEvents(provider: JsonRpcProvider) {
     swapEvents.map((swap) =>
       prisma.order.upsert({
         create: {
-          hash: swap.transactionHash,
-          address: swap.args[1],
-          block: swap.blockNumber,
+          hash: swap.hash,
+          address: swap.address,
+          block: swap.block,
           type: OrderType.Swap,
         },
-        update: {},
+        update: {
+          address: swap.address,
+        },
         where: {
-          hash: swap.transactionHash,
+          hash: swap.hash,
         },
       })
     )
-  );
-  console.log(
-    "Swap Addresses Complete",
-    getUniqueEventAddresses(swapEvents).size
   );
 }
 

@@ -35,15 +35,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PUBLIC_PROVIDER = exports.updateAllSwapOrders = exports.updateAllMakerOrders = exports.updateAllAdvancedOrders = exports.updateSwapOrders = exports.updateMakerOrders = exports.processMakerOrders = exports.getHistoricalOrderStats = exports.processSwapEvents = exports.updateTasks = exports.updateTaskReplace = exports.TASK_IDS = exports.getMakerOrders = exports.classifyMakerOrder = exports.OrderType = exports.MAKER_ORDER_HASH = exports.BATCH_ORDER_HASH = exports.RELATIVE_ORDER_HASH = exports.adjustableQueryFilter = exports.getMakerOrderEvents = exports.getSwapEvents = exports.getUniqueOrderAddresses = exports.getUniqueEventAddresses = exports.getClosestBlock = exports.getMostRecentBlockMaker = exports.getMostRecentBlockSwap = exports.getUniqueAddressOrderTypeWithBlockInterval = exports.getUniqueAddressOrderTypeWithBlockCumulative = exports.getUniqueAddressOrderType = void 0;
+exports.PUBLIC_PROVIDER = exports.updateAllSwapOrders = exports.updateAllMakerOrders = exports.updateAllAdvancedOrders = exports.updateSwapOrders = exports.updateMakerOrders = exports.processMakerOrders = exports.getHistoricalOrderStats = exports.processSwapEvents = exports.updateTasks = exports.updateTaskReplace = exports.TASK_IDS = exports.getMakerOrders = exports.classifyMakerOrder = exports.OrderType = exports.adjustableQueryFilter = exports.getMakerOrderEvents = exports.getSwapEvents = exports.getUniqueOrderAddresses = exports.getClosestBlock = exports.getMostRecentBlockMaker = exports.getMostRecentBlockSwap = exports.getUniqueAddressOrderTypeWithBlockInterval = exports.getUniqueAddressOrderTypeWithBlockCumulative = exports.getUniqueAddressOrderType = exports.MAKER_ORDER_HASH = exports.BATCH_ORDER_HASH = exports.RELATIVE_ORDER_HASH = void 0;
 const ethers_1 = require("ethers");
 const Grid = __importStar(require("./abi/Grid.json"));
 const axios_1 = __importDefault(require("axios"));
 const client_1 = require("@prisma/client");
 require("dotenv").config();
 const prisma = new client_1.PrismaClient();
+exports.RELATIVE_ORDER_HASH = "0xc23e3b38";
+exports.BATCH_ORDER_HASH = "0xa6fcb341";
+exports.MAKER_ORDER_HASH = "0x42d95cc7";
 const GRID_ADDRESS = "0xCF3D9B1793F6714C2c5ec68c7641d13F514eEd55";
 const GRID2_ADDRESS = "0x5984FE9Fb63be89B11D701E64016C77108a3a2C8";
+const GRID3_ADDRESS = "0xb15A3031746E265a6eAB58E55286A7E408c050e9";
 const MAKER_ORDER_MANAGER = "0x36E56CC52d7A0Af506D1656765510cd930fF1595";
 function getUniqueAddressOrderType(orderType) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -152,10 +156,6 @@ function getClosestBlock(date, provider) {
     });
 }
 exports.getClosestBlock = getClosestBlock;
-function getUniqueEventAddresses(events) {
-    return new Set(events.map((event) => event.args[1]));
-}
-exports.getUniqueEventAddresses = getUniqueEventAddresses;
 function getUniqueOrderAddresses(events) {
     return new Set(events.map((event) => event.address));
 }
@@ -164,9 +164,19 @@ function getSwapEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const gridContract = new ethers_1.ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
         const gridContract2 = new ethers_1.ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
+        const gridContract3 = new ethers_1.ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
         const events = yield adjustableQueryFilter(gridContract, gridContract.filters.Swap(), blockStart, blockEnd);
         const events2 = yield adjustableQueryFilter(gridContract2, gridContract2.filters.Swap(), blockStart, blockEnd);
-        return [...events, ...events2];
+        const events3 = yield adjustableQueryFilter(gridContract3, gridContract3.filters.Swap(), blockStart, blockEnd);
+        return Promise.all([...events, ...events2, ...events3].map((event) => __awaiter(this, void 0, void 0, function* () {
+            const txn = yield event.getTransaction();
+            return {
+                hash: txn.hash,
+                address: txn.from,
+                block: txn.blockNumber,
+                orderType: OrderType.Swap,
+            };
+        })));
     });
 }
 exports.getSwapEvents = getSwapEvents;
@@ -203,9 +213,6 @@ function adjustableQueryFilter(contract, filter, blockStart, blockEnd) {
     });
 }
 exports.adjustableQueryFilter = adjustableQueryFilter;
-exports.RELATIVE_ORDER_HASH = "0xc23e3b38";
-exports.BATCH_ORDER_HASH = "0xa6fcb341";
-exports.MAKER_ORDER_HASH = "0x42d95cc7";
 var OrderType;
 (function (OrderType) {
     OrderType["Maker"] = "Maker";
@@ -217,7 +224,6 @@ var OrderType;
 function classifyMakerOrder(event) {
     return __awaiter(this, void 0, void 0, function* () {
         const txn = yield event.getTransaction();
-        event.blockNumber;
         let orderType = OrderType.Unknown;
         if (txn.data.startsWith(exports.MAKER_ORDER_HASH)) {
             orderType = OrderType.Maker;
@@ -348,23 +354,25 @@ function processSwapEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const swapEvents = yield getSwapEvents(provider, blockStart, blockEnd);
         const swapAddresses = yield getUniqueAddressOrderType(OrderType.Swap);
-        const newAddresses = Array.from(getUniqueEventAddresses(swapEvents)).filter((address) => !swapAddresses.has(address));
+        const newAddresses = Array.from(getUniqueOrderAddresses(swapEvents)).filter((address) => !swapAddresses.has(address));
         yield updateTasks(TASK_IDS.SWAP, newAddresses);
         console.log("Swap event count", swapEvents.length);
         console.log("New swap addresses", newAddresses.length);
         yield prisma.$transaction(swapEvents.map((swap) => prisma.order.upsert({
             create: {
-                hash: swap.transactionHash,
-                address: swap.args[1],
-                block: swap.blockNumber,
+                hash: swap.hash,
+                address: swap.address,
+                block: swap.block,
                 type: OrderType.Swap,
             },
-            update: {},
+            update: {
+                address: swap.address,
+            },
             where: {
-                hash: swap.transactionHash,
+                hash: swap.hash,
             },
         })));
-        console.log("Swap Addresses Complete", getUniqueEventAddresses(swapEvents).size);
+        console.log("Swap Addresses Complete", getUniqueOrderAddresses(swapEvents).size);
     });
 }
 exports.processSwapEvents = processSwapEvents;
@@ -474,22 +482,12 @@ function main() {
             29: 1018263,
         };
         const EVENT_START_BLOCK = DATE_BLOCKS[26];
-        // console.log("SWAP ---------");
-        // await updateSwapOrders(provider);
-        // console.log("MAKERS ---------");
-        // await updateMakerOrders(provider);
-        console.log("ALL ADVANCED ---------");
-        yield updateAllAdvancedOrders(provider);
-        console.log("ALL MAKER ---------");
-        yield updateAllMakerOrders(provider);
-        console.log("ALL SWAP ---------");
-        yield updateAllSwapOrders(provider);
     });
 }
-function correctAdvancedOrders(provider) {
+function correctOrders(provider, orderType) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Swap, currentBlock);
+        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(orderType, currentBlock);
         yield updateTaskReplace(TASK_IDS.SWAP, Array.from(addresses));
     });
 }
