@@ -3,6 +3,7 @@
     "start": "tsc && node dist/index.js",
     "galxe": "tsc && node dist/updateGalxe.js",
     "sync": "tsc && node dist/sync.js",
+    "syncGalxe": "tsc && node dist/sync.js && node dist/updateGalxe.js",
     "db": "npx prisma studio",
     "correct": "tsc && node dist/correct.js"
   },
