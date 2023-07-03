@@ -64,7 +64,7 @@ async function syncMakerEvents(provider: JsonRpcProvider) {
 
   const { makerOrders, batchOrders, relativeOrders } = await getMakerOrders(
     provider,
-    mostRecentBlock,
+    EVENT_START_BLOCK,
     currentBlock
   );
 

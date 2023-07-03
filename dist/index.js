@@ -160,15 +160,18 @@ function getUniqueOrderAddresses(events) {
     return new Set(events.map((event) => event.address));
 }
 exports.getUniqueOrderAddresses = getUniqueOrderAddresses;
+const MAIN_GRIDS = [GRID_ADDRESS, GRID2_ADDRESS, GRID3_ADDRESS];
+const OTHER_GRIDS = [
+    "0x9969b00DAD3b1328e5da7E87df7b7A8acaCF725d",
+    "0x8C50663001b2F0C32c9F0B80CC3EDf29C1836128",
+];
 function getSwapEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
-        const gridContract = new ethers_1.ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
-        const gridContract2 = new ethers_1.ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
-        const gridContract3 = new ethers_1.ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
-        const events = yield adjustableQueryFilter(gridContract, gridContract.filters.Swap(), blockStart, blockEnd);
-        const events2 = yield adjustableQueryFilter(gridContract2, gridContract2.filters.Swap(), blockStart, blockEnd);
-        const events3 = yield adjustableQueryFilter(gridContract3, gridContract3.filters.Swap(), blockStart, blockEnd);
-        return Promise.all([...events, ...events2, ...events3].map((event) => __awaiter(this, void 0, void 0, function* () {
+        const addresses = yield Promise.all([...MAIN_GRIDS, ...OTHER_GRIDS].map((grid) => __awaiter(this, void 0, void 0, function* () {
+            const gridContract = new ethers_1.ethers.Contract(grid, Grid.abi, provider);
+            return yield adjustableQueryFilter(gridContract, gridContract.filters.Swap(), blockStart, blockEnd);
+        })));
+        return yield Promise.all(addresses.flat().map((event) => __awaiter(this, void 0, void 0, function* () {
             const txn = yield event.getTransaction();
             return {
                 hash: txn.hash,
@@ -184,9 +187,11 @@ function getMakerOrderEvents(provider, blockStart, blockEnd) {
     return __awaiter(this, void 0, void 0, function* () {
         const gridContract = new ethers_1.ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
         const gridContract2 = new ethers_1.ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
+        const gridContract3 = new ethers_1.ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
         return [
             ...(yield adjustableQueryFilter(gridContract, gridContract.filters.PlaceMakerOrder(), blockStart, blockEnd)),
             ...(yield adjustableQueryFilter(gridContract2, gridContract2.filters.PlaceMakerOrder(), blockStart, blockEnd)),
+            ...(yield adjustableQueryFilter(gridContract3, gridContract3.filters.PlaceMakerOrder(), blockStart, blockEnd)),
         ];
     });
 }

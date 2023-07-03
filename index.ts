@@ -131,35 +131,30 @@ export function getUniqueOrderAddresses(events: Order[]) {
   return new Set(events.map((event) => event.address));
 }
 
+const MAIN_GRIDS = [GRID_ADDRESS, GRID2_ADDRESS, GRID3_ADDRESS];
+const OTHER_GRIDS = [
+  "0x9969b00DAD3b1328e5da7E87df7b7A8acaCF725d",
+  "0x8C50663001b2F0C32c9F0B80CC3EDf29C1836128",
+];
+
 export async function getSwapEvents(
   provider: JsonRpcApiProvider,
   blockStart?: number,
   blockEnd?: number
 ): Promise<Order[]> {
-  const gridContract = new ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
-  const gridContract2 = new ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
-  const gridContract3 = new ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
-
-  const events = await adjustableQueryFilter(
-    gridContract,
-    gridContract.filters.Swap(),
-    blockStart,
-    blockEnd
+  const addresses = await Promise.all(
+    [...MAIN_GRIDS, ...OTHER_GRIDS].map(async (grid) => {
+      const gridContract = new ethers.Contract(grid, Grid.abi, provider);
+      return await adjustableQueryFilter(
+        gridContract,
+        gridContract.filters.Swap(),
+        blockStart,
+        blockEnd
+      );
+    })
   );
-  const events2 = await adjustableQueryFilter(
-    gridContract2,
-    gridContract2.filters.Swap(),
-    blockStart,
-    blockEnd
-  );
-  const events3 = await adjustableQueryFilter(
-    gridContract3,
-    gridContract3.filters.Swap(),
-    blockStart,
-    blockEnd
-  );
-  return Promise.all(
-    [...events, ...events2, ...events3].map(async (event): Promise<Order> => {
+  return await Promise.all(
+    addresses.flat().map(async (event): Promise<Order> => {
       const txn = await event.getTransaction();
       return {
         hash: txn.hash,
@@ -178,6 +173,7 @@ export async function getMakerOrderEvents(
 ) {
   const gridContract = new ethers.Contract(GRID_ADDRESS, Grid.abi, provider);
   const gridContract2 = new ethers.Contract(GRID2_ADDRESS, Grid.abi, provider);
+  const gridContract3 = new ethers.Contract(GRID3_ADDRESS, Grid.abi, provider);
 
   return [
     ...(await adjustableQueryFilter(
@@ -189,6 +185,12 @@ export async function getMakerOrderEvents(
     ...(await adjustableQueryFilter(
       gridContract2,
       gridContract2.filters.PlaceMakerOrder(),
+      blockStart,
+      blockEnd
+    )),
+    ...(await adjustableQueryFilter(
+      gridContract3,
+      gridContract3.filters.PlaceMakerOrder(),
       blockStart,
       blockEnd
     )),
