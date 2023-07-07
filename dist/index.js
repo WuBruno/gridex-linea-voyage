@@ -449,27 +449,30 @@ exports.updateSwapOrders = updateSwapOrders;
 function updateAllAdvancedOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const batch = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Batch, currentBlock);
-        const relative = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Relative, currentBlock);
-        const both = [...batch].filter((x) => relative.has(x));
-        yield updateTasks(TASK_IDS.ADVANCED, both);
-        console.log("Advanced Order Addresses Complete", both.length);
+        const batch = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Batch, 1048392, currentBlock);
+        const relative = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Relative, 1048392, currentBlock);
+        const both = new Set([...batch, ...relative]);
+        yield updateTasks(TASK_IDS.ADVANCED, [...both]);
+        console.log("Advanced Order Addresses Complete", both.size);
     });
 }
 exports.updateAllAdvancedOrders = updateAllAdvancedOrders;
 function updateAllMakerOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Maker, currentBlock);
-        yield updateTasks(TASK_IDS.MAKER, [...addresses]);
-        console.log("Maker Addresses Complete", addresses.size);
+        const batch = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Batch, 1048392, currentBlock);
+        const relative = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Relative, 1048392, currentBlock);
+        const addresses = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Maker, 1048392, currentBlock);
+        const newMaker = new Set([...addresses, ...batch, ...relative]);
+        yield updateTasks(TASK_IDS.MAKER, [...newMaker]);
+        console.log("Maker Addresses Complete", newMaker.size);
     });
 }
 exports.updateAllMakerOrders = updateAllMakerOrders;
 function updateAllSwapOrders(provider) {
     return __awaiter(this, void 0, void 0, function* () {
         const currentBlock = yield provider.getBlockNumber();
-        const addresses = yield getUniqueAddressOrderTypeWithBlockCumulative(OrderType.Swap, currentBlock);
+        const addresses = yield getUniqueAddressOrderTypeWithBlockInterval(OrderType.Swap, 1048392, currentBlock);
         yield updateTasks(TASK_IDS.SWAP, [...addresses]);
         console.log("Swap Addresses Complete", addresses.size);
     });
@@ -485,8 +488,14 @@ function main() {
             27: 1003898,
             28: 1011066,
             29: 1018263,
+            7: 1077193,
         };
         const EVENT_START_BLOCK = DATE_BLOCKS[26];
+        // const EVENT_END_BLOCK = await getClosestBlock(
+        //   "2023-07-03T05:59:59",
+        //   provider
+        // ); // 1048392
+        // console.log(EVENT_END_BLOCK);
     });
 }
 function correctOrders(provider, orderType) {
@@ -496,13 +505,13 @@ function correctOrders(provider, orderType) {
         yield updateTaskReplace(TASK_IDS.SWAP, Array.from(addresses));
     });
 }
-// main()
-//   .then(async () => {
-//     await prisma.$disconnect();
-//   })
-//   .catch(async (e) => {
-//     console.error(e);
-//     await prisma.$disconnect();
-//     process.exit(1);
-//   });
+main()
+    .then(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield prisma.$disconnect();
+}))
+    .catch((e) => __awaiter(void 0, void 0, void 0, function* () {
+    console.error(e);
+    yield prisma.$disconnect();
+    process.exit(1);
+}));
 //# sourceMappingURL=index.js.map

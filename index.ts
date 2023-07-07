@@ -578,19 +578,28 @@ export async function updateAllAdvancedOrders(provider: JsonRpcApiProvider) {
     OrderType.Relative,
     currentBlock
   );
-  const both = [...batch].filter((x) => relative.has(x));
-  await updateTasks(TASK_IDS.ADVANCED, both);
-  console.log("Advanced Order Addresses Complete", both.length);
+  const both = new Set([...batch, ...relative]);
+  await updateTasks(TASK_IDS.ADVANCED, [...both]);
+  console.log("Advanced Order Addresses Complete", both.size);
 }
 
 export async function updateAllMakerOrders(provider: JsonRpcApiProvider) {
   const currentBlock = await provider.getBlockNumber();
+  const batch = await getUniqueAddressOrderTypeWithBlockCumulative(
+    OrderType.Batch,
+    currentBlock
+  );
+  const relative = await getUniqueAddressOrderTypeWithBlockCumulative(
+    OrderType.Relative,
+    currentBlock
+  );
   const addresses = await getUniqueAddressOrderTypeWithBlockCumulative(
     OrderType.Maker,
     currentBlock
   );
-  await updateTasks(TASK_IDS.MAKER, [...addresses]);
-  console.log("Maker Addresses Complete", addresses.size);
+  const newMaker = new Set([...addresses, ...batch, ...relative]);
+  await updateTasks(TASK_IDS.MAKER, [...newMaker]);
+  console.log("Maker Addresses Complete", newMaker.size);
 }
 
 export async function updateAllSwapOrders(provider: JsonRpcApiProvider) {
@@ -615,8 +624,14 @@ async function main() {
     27: 1003898,
     28: 1011066,
     29: 1018263,
+    7: 1077193,
   };
   const EVENT_START_BLOCK = DATE_BLOCKS[26];
+  // const EVENT_END_BLOCK = await getClosestBlock(
+  //   "2023-07-03T05:59:59",
+  //   provider
+  // ); // 1048392
+  // console.log(EVENT_END_BLOCK);
 }
 
 async function correctOrders(
@@ -632,12 +647,12 @@ async function correctOrders(
   await updateTaskReplace(TASK_IDS.SWAP, Array.from(addresses));
 }
 
-// main()
-//   .then(async () => {
-//     await prisma.$disconnect();
-//   })
-//   .catch(async (e) => {
-//     console.error(e);
-//     await prisma.$disconnect();
-//     process.exit(1);
-//   });
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
