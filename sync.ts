@@ -2,6 +2,7 @@ import { JsonRpcProvider, ethers } from "ethers";
 import {
   OrderType,
   PUBLIC_PROVIDER,
+  getClosestBlock,
   getMakerOrders,
   getMostRecentBlockMaker,
   getMostRecentBlockSwap,
@@ -21,6 +22,7 @@ const DATE_BLOCKS = {
 };
 
 const EVENT_START_BLOCK = DATE_BLOCKS[26];
+const EVENT_END_BLOCK = 1077193;
 
 async function syncSwapEvents(provider: JsonRpcProvider) {
   const currentBlock = await provider.getBlockNumber();
@@ -28,7 +30,7 @@ async function syncSwapEvents(provider: JsonRpcProvider) {
   const swapEvents = await getSwapEvents(
     provider,
     mostRecentBlock,
-    currentBlock
+    EVENT_END_BLOCK
   );
   const swapAddresses = await getUniqueAddressOrderType(OrderType.Swap);
   const newAddresses = Array.from(getUniqueOrderAddresses(swapEvents)).filter(
@@ -64,8 +66,8 @@ async function syncMakerEvents(provider: JsonRpcProvider) {
 
   const { makerOrders, batchOrders, relativeOrders } = await getMakerOrders(
     provider,
-    EVENT_START_BLOCK,
-    currentBlock
+    mostRecentBlock,
+    EVENT_END_BLOCK
   );
 
   console.log("Maker event count", makerOrders.length);
