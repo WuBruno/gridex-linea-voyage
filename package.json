@@ -5,7 +5,8 @@
     "sync": "tsc && node dist/sync.js",
     "syncGalxe": "tsc && node dist/sync.js && node dist/updateGalxe.js",
     "db": "npx prisma studio",
-    "correct": "tsc && node dist/correct.js"
+    "correct": "tsc && node dist/correct.js",
+    "rhino": "tsc && node dist/rhino.js"
   },
   "dependencies": {
     "@prisma/client": "^4.16.1",
